@@ -4,7 +4,7 @@ use pixels::{wgpu, PixelsContext};
 use winit::window::Window;
 
 /// Manages all state required for rendering egui over `Pixels`.
-pub(crate) struct Framework {
+pub struct Framework {
     // State for egui.
     egui_ctx: Context,
     egui_state: egui_winit::State,
@@ -12,20 +12,11 @@ pub(crate) struct Framework {
     rpass: RenderPass,
     paint_jobs: Vec<ClippedMesh>,
     textures: TexturesDelta,
-
-    // State for the GUI
-    gui: Gui,
-}
-
-/// Example application state. A real application will need a lot more state than this.
-struct Gui {
-    /// Only show the egui window when true.
-    window_open: bool,
 }
 
 impl Framework {
     /// Create egui.
-    pub(crate) fn new(width: u32, height: u32, scale_factor: f32, pixels: &pixels::Pixels) -> Self {
+    pub fn new(width: u32, height: u32, scale_factor: f32, pixels: &pixels::Pixels) -> Self {
         let max_texture_size = pixels.device().limits().max_texture_dimension_2d as usize;
 
         let egui_ctx = Context::default();
@@ -37,7 +28,6 @@ impl Framework {
         };
         let rpass = RenderPass::new(pixels.device(), pixels.render_texture_format(), 1);
         let textures = TexturesDelta::default();
-        let gui = Gui::new();
 
         Self {
             egui_ctx,
@@ -46,17 +36,16 @@ impl Framework {
             rpass,
             paint_jobs: Vec::new(),
             textures,
-            gui,
         }
     }
 
     /// Handle input events from the window manager.
-    pub(crate) fn handle_event(&mut self, event: &winit::event::WindowEvent) {
+    pub fn handle_event(&mut self, event: &winit::event::WindowEvent) {
         self.egui_state.on_event(&self.egui_ctx, event);
     }
 
     /// Resize egui.
-    pub(crate) fn resize(&mut self, width: u32, height: u32) {
+    pub fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
             self.screen_descriptor.physical_width = width;
             self.screen_descriptor.physical_height = height;
@@ -64,18 +53,14 @@ impl Framework {
     }
 
     /// Update scaling factor.
-    pub(crate) fn scale_factor(&mut self, scale_factor: f64) {
+    pub fn scale_factor(&mut self, scale_factor: f64) {
         self.screen_descriptor.scale_factor = scale_factor as f32;
     }
 
-    /// Prepare egui.
-    pub(crate) fn prepare(&mut self, window: &Window) {
+    pub fn update(&mut self, window: &Window, f: impl FnOnce(&Context)) {
         // Run the egui frame and create all paint jobs to prepare for rendering.
         let raw_input = self.egui_state.take_egui_input(window);
-        let output = self.egui_ctx.run(raw_input, |egui_ctx| {
-            // Draw the demo application.
-            self.gui.ui(egui_ctx);
-        });
+        let output = self.egui_ctx.run(raw_input, f);
 
         self.textures.append(output.textures_delta);
         self.egui_state
@@ -84,7 +69,7 @@ impl Framework {
     }
 
     /// Render egui.
-    pub(crate) fn render(
+    pub fn render(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         render_target: &wgpu::TextureView,
@@ -112,41 +97,5 @@ impl Framework {
         // Cleanup
         let textures = std::mem::take(&mut self.textures);
         self.rpass.remove_textures(textures)
-    }
-}
-
-impl Gui {
-    /// Create a `Gui`.
-    fn new() -> Self {
-        Self { window_open: true }
-    }
-
-    /// Create the UI using egui.
-    fn ui(&mut self, ctx: &Context) {
-        egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
-                ui.menu_button("File", |ui| {
-                    if ui.button("About...").clicked() {
-                        self.window_open = true;
-                        ui.close_menu();
-                    }
-                })
-            });
-        });
-
-        egui::Window::new("Hello, egui!")
-            .open(&mut self.window_open)
-            .show(ctx, |ui| {
-                ui.label("This example demonstrates using egui with pixels.");
-                ui.label("Made with 💖 in San Francisco!");
-
-                ui.separator();
-
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x /= 2.0;
-                    ui.label("Learn more about egui at");
-                    ui.hyperlink("https://docs.rs/egui");
-                });
-            });
     }
 }
