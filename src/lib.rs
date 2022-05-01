@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+pub mod cell;
 mod gui;
 mod mainloop;
 
