@@ -7,8 +7,8 @@ use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
 
-const WIDTH: u32 = 640;
-const HEIGHT: u32 = 480;
+pub const WIDTH: u32 = 640;
+pub const HEIGHT: u32 = 480;
 
 pub trait App {
     fn update(&mut self, frame: &mut [u8], ui: &egui::Context);

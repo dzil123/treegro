@@ -3,4 +3,4 @@
 mod gui;
 mod mainloop;
 
-pub use mainloop::{mainloop, App};
+pub use mainloop::{mainloop, App, HEIGHT, WIDTH};

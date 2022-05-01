@@ -1,32 +1,55 @@
 #![forbid(unsafe_code)]
 
+use treegro::*;
+
+use rand::prelude::*;
+
+const NUM_CELLS: u32 = WIDTH * HEIGHT;
+
+#[derive(Clone, Default)]
+struct Cell {
+    resources: f32,
+}
+
 #[derive(Default)]
-struct World {}
+struct World {
+    cells: Vec<Cell>,
+}
 
 impl World {
     fn new() -> Self {
-        Self {
+        let mut this = Self {
             ..Default::default()
-        }
+        };
+        this.randomize();
+        this
+    }
+
+    fn randomize(&mut self) {
+        self.cells = (0..NUM_CELLS)
+            .map(|_| Cell {
+                resources: random(),
+            })
+            .collect();
     }
 }
 
-impl treegro::App for World {
+impl App for World {
     fn update(&mut self, frame: &mut [u8], ctx: &egui::Context) {
-        egui::Window::new("Hello, egui!").show(ctx, |ui| {
-            ui.label("This example demonstrates using egui with pixels.");
-            ui.label("Made with 💖 in San Francisco!");
-
-            ui.separator();
-
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x /= 2.0;
-            });
+        egui::Window::new("TreeGro").show(ctx, |ui| {
+            if ui.button("Randomize").clicked() {
+                self.randomize();
+            }
         });
+
+        for (cell, pixel) in self.cells.iter().zip(frame.chunks_exact_mut(4)) {
+            let f = (cell.resources * 256.0) as u8;
+            pixel.copy_from_slice(&[f, f, f, 0xFF]);
+        }
     }
 }
 
 fn main() {
     let world = World::new();
-    treegro::mainloop(world)
+    mainloop(world)
 }

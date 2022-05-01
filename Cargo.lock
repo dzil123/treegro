@@ -1855,6 +1855,7 @@ dependencies = [
  "egui-winit",
  "egui_wgpu_backend",
  "pixels",
+ "rand",
  "winit",
  "winit_input_helper",
 ]
