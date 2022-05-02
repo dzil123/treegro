@@ -168,15 +168,18 @@ impl App for World {
             self.update_cells();
         }
 
+        let mut isolate_color_mat = Mat4::identity();
+        for (i, c) in isolate_color.into_iter().enumerate() {
+            if c {
+                isolate_color_mat = Mat4::zeroed();
+                isolate_color_mat.cols[i] = Vec4::one();
+            }
+        }
+
         let frame = pixels.get_frame();
         for (cell, pixel) in self.cells.iter().zip(frame.chunks_exact_mut(4)) {
             let mut f = cell.density * 256.0;
-            f.as_array()
-                .clone()
-                .into_iter()
-                .zip(isolate_color)
-                .filter(|(_, i)| *i)
-                .for_each(|(v, _)| f = Vec4::broadcast(v));
+            f = isolate_color_mat * f;
             if self.absolute_value {
                 f = f.abs();
             }
