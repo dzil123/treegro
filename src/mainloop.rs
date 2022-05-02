@@ -13,7 +13,7 @@ pub const WIDTH: u32 = 640;
 pub const HEIGHT: u32 = 480;
 
 pub trait App {
-    fn update(&mut self, frame: &mut [u8], ui: &egui::Context);
+    fn update(&mut self, pixels: &mut Pixels, ui: &egui::Context);
 }
 
 pub fn mainloop(mut app: impl App + 'static) {
@@ -82,7 +82,7 @@ pub fn mainloop(mut app: impl App + 'static) {
             // Draw the current frame
             Event::RedrawRequested(_) => {
                 // Prepare egui
-                framework.update(&window, |ctx| app.update(pixels.get_frame(), ctx));
+                framework.update(&window, |ctx| app.update(&mut pixels, ctx));
 
                 // Render everything together
                 let render_result = pixels.render_with(|encoder, render_target, context| {
