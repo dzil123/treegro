@@ -5,8 +5,6 @@ use treegro::{cell::Cell, *};
 
 use rand::prelude::*;
 
-const NUM_CELLS: u32 = WIDTH * HEIGHT;
-
 #[derive(Default)]
 struct World {
     cells: Vec<Cell>,
@@ -27,12 +25,12 @@ impl World {
     }
 
     fn randomize(&mut self) {
-        self.cells = (0..NUM_CELLS)
-            .map(|_| Cell {
-                resources: 0.5,
-                density: random(),
-            })
-            .collect();
+        let num_cells = self.pixels_size.0 * self.pixels_size.1;
+        self.cells.clear();
+        self.cells.resize_with(num_cells as _, || Cell {
+            resources: 0.5,
+            density: random(),
+        });
     }
 
     fn update_cells(&mut self) {
