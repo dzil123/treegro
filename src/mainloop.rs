@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::gui::Framework;
 
 use pixels::{Pixels, SurfaceTexture};
@@ -38,6 +40,8 @@ pub fn mainloop(mut app: impl App + 'static) {
         (pixels, framework)
     };
 
+    let mut last_frame = Instant::now();
+
     event_loop.run(move |event, _, control_flow| {
         // Handle input events
         if input.update(&event) {
@@ -63,6 +67,14 @@ pub fn mainloop(mut app: impl App + 'static) {
         }
 
         match event {
+            Event::NewEvents(_) => {
+                let new_frame = Instant::now();
+                let delta_time = new_frame - last_frame;
+                last_frame = new_frame;
+
+                let _framerate = 1.0 / delta_time.as_secs_f32();
+                // dbg!(_framerate);
+            }
             Event::WindowEvent { event, .. } => {
                 // Update egui inputs
                 framework.handle_event(&event);
