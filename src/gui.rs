@@ -6,7 +6,7 @@ use winit::window::Window;
 /// Manages all state required for rendering egui over `Pixels`.
 pub struct Framework {
     // State for egui.
-    egui_ctx: Context,
+    pub egui_ctx: Context,
     egui_state: egui_winit::State,
     screen_descriptor: ScreenDescriptor,
     rpass: RenderPass,

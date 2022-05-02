@@ -13,6 +13,7 @@ pub const WIDTH: u32 = 640;
 pub const HEIGHT: u32 = 480;
 
 pub trait App {
+    fn init(&mut self, pixels: &mut Pixels, ui: &egui::Context);
     fn update(&mut self, pixels: &mut Pixels, ui: &egui::Context);
 }
 
@@ -39,6 +40,8 @@ pub fn mainloop(mut app: impl App + 'static) {
 
         (pixels, framework)
     };
+
+    app.init(&mut pixels, &framework.egui_ctx);
 
     let mut last_frame = Instant::now();
 
