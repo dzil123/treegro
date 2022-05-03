@@ -12,7 +12,8 @@ struct World {
     running: bool,
     absolute_value: bool,
     time_delta: f32,
-    ticks_per_frame: u32,
+    ticks_per_frame: i8, // if negative, then frames per tick
+    tick_timer: u8,
     matrix: Mat4,
     pixels_size: (u32, u32),
 }
@@ -24,7 +25,7 @@ impl World {
             ticks_per_frame: 1,
             time_delta: 0.01,
             matrix: Mat4::zeroed(),
-            ..Default::default()
+            ..Self::default()
         };
         this.randomize();
         this
@@ -40,8 +41,19 @@ impl World {
     }
 
     fn update_cells(&mut self) {
-        for _ in 0..self.ticks_per_frame {
-            for cell in self.cells.iter_mut() {
+        let count = if self.ticks_per_frame < 0 {
+            self.tick_timer += 1;
+            if self.tick_timer >= -self.ticks_per_frame as _ {
+                self.tick_timer = 0;
+                1
+            } else {
+                0
+            }
+        } else {
+            self.ticks_per_frame
+        };
+        for _ in 0..count {
+            for cell in &mut self.cells {
                 cell.step(self.matrix, self.time_delta);
             }
         }
@@ -53,7 +65,7 @@ impl App for World {
         // make the windows slightly transparent
         let mut visuals = egui::Visuals::dark();
         visuals.widgets.noninteractive.bg_fill =
-            egui::Color32::from_rgba_premultiplied(27, 27, 27, 250);
+            egui::Color32::from_rgba_premultiplied(27, 27, 27, 245);
         ctx.set_visuals(visuals);
     }
 
@@ -89,9 +101,17 @@ impl App for World {
                     );
 
                     ui.add(
-                        egui::Slider::new(&mut self.ticks_per_frame, 1..=64)
-                            .text("Ticks")
-                            .logarithmic(true),
+                        egui::Slider::from_get_set(-64.0..=64.0, |val| {
+                            if let Some(v) = val {
+                                let v = v.round() as _;
+                                self.ticks_per_frame = if v == -1 || v == 0 { 1 } else { v }
+                            }
+
+                            self.ticks_per_frame as _
+                        })
+                        .text("Ticks")
+                        .integer()
+                        .logarithmic(true),
                     );
                 });
 
@@ -190,5 +210,5 @@ impl App for World {
 
 fn main() {
     let world = World::new();
-    mainloop(world)
+    mainloop(world);
 }
