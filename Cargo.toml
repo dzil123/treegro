@@ -9,10 +9,10 @@ opt-level = 1
 [dependencies]
 bytemuck = "1.9.1"
 egui = "0.17.0"
-egui-winit = "0.17.0"
+egui-winit = { version = "0.17.0", default-features = false }
 egui_wgpu_backend = "0.17.0"
 pixels = "0.9.0"
 rand = "0.8.5"
 ultraviolet = { version = "0.8.0", features = ["bytemuck"] }
-winit = "0.26.1"
+winit = { version = "0.26.1", default-features = false }
 winit_input_helper = "0.12.0"
