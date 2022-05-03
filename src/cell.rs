@@ -1,5 +1,4 @@
-use egui::lerp;
-use ultraviolet::{Mat4, Vec4};
+use ultraviolet::{Lerp, Mat4, Vec4};
 
 #[derive(Clone, Default)]
 pub struct Cell {
@@ -19,7 +18,7 @@ impl Cell {
         // self.density += d_density_dt * dt;
 
         let new_density = mat * self.density;
-        self.density = lerp(self.density..=new_density, dt);
+        self.density = self.density.lerp(new_density, dt);
         // self.density.clamp(Vec4::zero(), Vec4::one());
     }
 }
