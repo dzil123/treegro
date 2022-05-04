@@ -13,13 +13,15 @@ struct World {
     running: bool,
     absolute_value: bool,
     time_delta: f32,
-    ticks_per_frame: i8, // if negative, then frames per tick
+    ticks_per_frame: i16, // if negative, then frames per tick
     tick_timer: u8,
     matrix: Mat4,
     diffuse: f32,
     diffuse_enabled: bool,
     diffuse_strength: Vec4,
     pixels_size: (u32, u32),
+    snapshot: Vec<Vec<Cell>>,
+    snapshot_enabled: bool,
 }
 
 impl World {
@@ -102,6 +104,9 @@ impl World {
             if self.diffuse_enabled {
                 self.diffuse_pass();
             }
+            if self.snapshot_enabled {
+                self.snapshot.push(self.cells.clone());
+            }
         }
     }
 }
@@ -147,7 +152,7 @@ impl App for World {
                     );
 
                     ui.add(
-                        egui::Slider::from_get_set(-64.0..=64.0, |val| {
+                        egui::Slider::from_get_set(-64.0..=4096.0, |val| {
                             if let Some(v) = val {
                                 let v = v.round() as _;
                                 self.ticks_per_frame = if v == -1 || v == 0 { 1 } else { v }
@@ -219,9 +224,40 @@ impl App for World {
                 });
             });
 
+        egui::Window::new("Plot").show(ctx, |ui| {
+            ui.checkbox(&mut self.snapshot_enabled, "Enabled");
+            if ui.button("Clear").clicked() {
+                self.snapshot.clear();
+            }
+
+            use egui::plot::*;
+            Plot::new("Snapshot").show(ui, |plot_ui| {
+                let coord = 0; // todo
+                let densities: Vec<Vec4> = self
+                    .snapshot
+                    .iter()
+                    .map(|cells| cells[coord].density)
+                    .collect();
+
+                for i in 0..4 {
+                    let values = Values::from_values_iter(
+                        densities
+                            .iter()
+                            .map(|density| density[i])
+                            .enumerate()
+                            .map(|(x, y)| Value::new(x as f64, y)),
+                    );
+
+                    plot_ui.line(Line::new(values));
+                }
+            });
+        });
+
         if changed_size {
             pixels.resize_buffer(self.pixels_size.0, self.pixels_size.1);
             self.randomize();
+            self.snapshot.clear();
+            self.snapshot_enabled = false;
             return;
         }
 
