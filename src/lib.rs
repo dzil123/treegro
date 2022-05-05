@@ -5,6 +5,7 @@ use std::ops::RangeInclusive;
 use ultraviolet::Vec4;
 
 pub mod cell;
+mod fsm;
 mod gui;
 mod mainloop;
 
