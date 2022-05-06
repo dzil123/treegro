@@ -8,8 +8,11 @@ pub mod cell;
 mod fsm;
 mod gui;
 mod mainloop;
+pub mod param;
+mod world;
 
 pub use mainloop::{mainloop, App, HEIGHT, WIDTH};
+pub use world::{World, NUM_RESOURCES};
 
 pub fn random_vec4() -> ultraviolet::Vec4 {
     use rand::random;
