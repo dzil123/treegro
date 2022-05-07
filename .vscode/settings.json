@@ -10,5 +10,9 @@
     "git.rebaseWhenSync": true,
     "git.enableSmartCommit": true,
     "git.confirmEmptyCommits": true,
-    "git.confirmSync": false
+    "git.confirmSync": false,
+    "lldb.displayFormat": "auto",
+    "lldb.showDisassembly": "auto",
+    "lldb.dereferencePointers": true,
+    "lldb.consoleMode": "commands"
 }

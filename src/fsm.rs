@@ -4,8 +4,7 @@ use std::f32::EPSILON;
 use crate::param::*;
 use crate::World;
 
-trait StatePipe {
-    fn new(period: u32) -> Self;
+trait StatePipe: Default {
     fn loss(&self) -> u32;
     fn pop(&self) -> u32;
     fn step(&mut self, gain: u32);
@@ -19,14 +18,6 @@ struct GroundTruthStatePipe {
 }
 
 impl StatePipe for GroundTruthStatePipe {
-    fn new(period: u32) -> Self {
-        let mut queue = VecDeque::with_capacity(period as usize);
-        for _ in 0..period {
-            queue.push_back(0);
-        }
-        GroundTruthStatePipe { age_list: queue }
-    }
-
     fn loss(&self) -> u32 {
         self.age_list[0]
     }
@@ -71,8 +62,13 @@ struct GaussianStatePipe {
 
 impl GaussianStatePipe {
     fn retain_age_avg(&self) -> f32 {
-        (self.pop as f32 * self.age_avg - (self.loss() * self.period) as f32)
-            / ((self.pop - self.loss()) as f32)
+        if self.pop - self.loss() == 0 {
+            // Zero retention
+            0.0
+        } else {
+            (self.pop as f32 * self.age_avg - (self.loss() * self.period) as f32)
+                / ((self.pop - self.loss()) as f32)
+        }
     }
 
     fn approx_gauss(&self, mean: f32, std: f32, val: f32) -> f32 {
@@ -106,15 +102,6 @@ impl Default for GaussianStatePipe {
 }
 
 impl StatePipe for GaussianStatePipe {
-    fn new(period: u32) -> Self {
-        GaussianStatePipe {
-            period: period,
-            pop: 0,
-            age_avg: 0.0,
-            age_var: 0.0,
-        }
-    }
-
     fn loss(&self) -> u32 {
         (self.pop as f32 * self.loss_percent()).round() as u32
     }
@@ -157,12 +144,17 @@ impl StatePipe for GaussianStatePipe {
     }
 
     fn set_period(&mut self, period: u32) {
-        self.period = period;
+        self.period = period - 1;
     }
 
     fn cull_pop(&mut self, remove_percent: f32) {
-        self.pop = (self.pop as f32 * (1.0 - remove_percent)) as u32;
-        self.age_var *= 1.0 / (1.0 - remove_percent);
+        let new_pop = (self.pop as f32 * (1.0 - remove_percent)) as u32;
+        if new_pop == 0 {
+            self.age_avg = 0.0;
+        } else {
+            self.age_var = self.age_var * (self.pop as f32) / (new_pop as f32);
+        }
+        self.pop = new_pop;
     }
 }
 
@@ -287,6 +279,93 @@ impl<T: StatePipe + Default> PlantStateMachine<T> {
 
 #[cfg(test)]
 pub mod tests {
+
+    use crate::{distrib_util::*, fsm::*};
+    use std::f32::consts::{E, PI};
+
+    const SIMPLE_TEST_PERIOD_INCR: u32 = 5;
+    const SIMPLE_TEST_AMOUNT: u32 = 10;
+    const SIMPLE_TEST_ITER: u32 = 10;
+
+    fn do_simple_state_pipe_test<T: StatePipe>(pipe_name: &'static str, mut pipe: T) {
+        let mut period: u32 = 0;
+
+        for _ in 0..SIMPLE_TEST_ITER {
+            period += SIMPLE_TEST_PERIOD_INCR;
+            pipe.set_period(period);
+
+            pipe.step(SIMPLE_TEST_AMOUNT);
+            println!(
+                "Running {} with period: {}, pop size: {}!",
+                pipe_name, period, SIMPLE_TEST_AMOUNT
+            );
+            for i in 0..(period - 1) {
+                assert!(
+                    pipe.loss() == 0,
+                    "{} lost {} population prematurely on step {}!",
+                    pipe_name,
+                    pipe.loss(),
+                    i
+                );
+                assert!(
+                    pipe.pop() == SIMPLE_TEST_AMOUNT,
+                    "{} population decreased during it's period!",
+                    pipe_name
+                );
+                pipe.step(0);
+            }
+
+            assert!(
+                pipe.loss() == SIMPLE_TEST_AMOUNT,
+                "{} didn't lose enough population after it's period!",
+                pipe_name
+            );
+
+            pipe.step(0);
+            assert!(
+                pipe.pop() == 0,
+                "{} retained population after it's period! {}!",
+                pipe_name,
+                pipe.pop()
+            );
+        }
+    }
+
+    const NORMAL_TEST_PERIOD_INCR: u32 = 5;
+    const NORMAL_TEST_AMOUNT_INCR: u32 = 100;
+    const NORMAL_TEST_STD_INCR: f32 = 0.5;
+    const NORMAL_TEST_ITER: u32 = 10;
+
+    fn do_normal_state_pipe_test<T: StatePipe>(pipe_name: &'static str, mut pipe: T) {
+        let mut period = 0;
+        let mut pop_size = 0;
+        let mut pop_std = 0_f32;
+
+        for _ in 0..NORMAL_TEST_ITER {
+            pop_std += NORMAL_TEST_STD_INCR;
+
+            for _ in 0..NORMAL_TEST_ITER {
+                pop_size += NORMAL_TEST_AMOUNT_INCR;
+
+                for _ in 0..NORMAL_TEST_ITER {
+                    pop_std += NORMAL_TEST_STD_INCR;
+
+                    pip
+                }
+            }
+        }
+    }
+
     #[test]
-    fn test_ground_truth_pipe() {}
+    fn test_ground_truth_pipe_simple() {
+        do_simple_state_pipe_test("GroundTruthStatePipe", GroundTruthStatePipe::default());
+    }
+
+    #[test]
+    fn test_gaussian_pipe_simple() {
+        do_simple_state_pipe_test("GaussianStatePipe", GaussianStatePipe::default());
+    }
+
+    #[test]
+    fn test_gound_truth_pipe_normal() {}
 }

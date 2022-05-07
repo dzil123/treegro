@@ -3,8 +3,8 @@ name = "treegro"
 version = "0.1.0"
 edition = "2021"
 
-[profile.dev]
-opt-level = 1
+# [profile.dev]
+# opt-level = 1
 
 [dependencies]
 bytemuck = "1.9.1"
