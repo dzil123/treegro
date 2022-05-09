@@ -295,10 +295,7 @@ pub mod tests {
             pipe.set_period(period);
 
             pipe.step(SIMPLE_TEST_AMOUNT);
-            println!(
-                "Running {} with period: {}, pop size: {}!",
-                pipe_name, period, SIMPLE_TEST_AMOUNT
-            );
+
             for i in 0..(period - 1) {
                 assert!(
                     pipe.loss() == 0,
@@ -307,12 +304,14 @@ pub mod tests {
                     pipe.loss(),
                     i
                 );
+
+                pipe.step(0);
+
                 assert!(
                     pipe.pop() == SIMPLE_TEST_AMOUNT,
                     "{} population decreased during it's period!",
                     pipe_name
                 );
-                pipe.step(0);
             }
 
             assert!(
@@ -322,6 +321,7 @@ pub mod tests {
             );
 
             pipe.step(0);
+
             assert!(
                 pipe.pop() == 0,
                 "{} retained population after it's period! {}!",
@@ -331,27 +331,116 @@ pub mod tests {
         }
     }
 
-    const NORMAL_TEST_PERIOD_INCR: u32 = 5;
-    const NORMAL_TEST_AMOUNT_INCR: u32 = 100;
-    const NORMAL_TEST_STD_INCR: f32 = 0.5;
-    const NORMAL_TEST_ITER: u32 = 10;
+    const CONT_TEST_PERIOD_INCR: u32 = 5;
+    const CONT_TEST_DIST_LENGTH: u32 = 50;
+    const CONT_TEST_AMOUNT_INCR: u32 = 5;
+    const CONT_TEST_ITER: u32 = 20;
 
-    fn do_normal_state_pipe_test<T: StatePipe>(pipe_name: &'static str, mut pipe: T) {
+    fn do_cont_state_pipe_test<T: StatePipe>(pipe_name: &'static str, mut pipe: T) {
         let mut period = 0;
         let mut pop_size = 0;
-        let mut pop_std = 0_f32;
 
-        for _ in 0..NORMAL_TEST_ITER {
-            pop_std += NORMAL_TEST_STD_INCR;
+        for _ in 0..CONT_TEST_ITER {
+            period += CONT_TEST_PERIOD_INCR;
 
-            for _ in 0..NORMAL_TEST_ITER {
-                pop_size += NORMAL_TEST_AMOUNT_INCR;
+            for _ in 0..CONT_TEST_ITER {
+                pop_size += CONT_TEST_AMOUNT_INCR;
+                pipe.set_period(period);
 
-                for _ in 0..NORMAL_TEST_ITER {
-                    pop_std += NORMAL_TEST_STD_INCR;
+                // Only gain
+                for i in 0..period.min(CONT_TEST_DIST_LENGTH) {
+                    assert!(
+                        pipe.loss() == 0,
+                        "{} lost {} population during insertion step {}!",
+                        pipe_name,
+                        pipe.loss(),
+                        i
+                    );
 
-                    pip
+                    pipe.step(pop_size);
+
+                    assert!(
+                        pipe.pop() == (i + 1) * pop_size,
+                        "{} incorrect population after insertion step {}: {}!",
+                        pipe_name,
+                        i,
+                        pop_size,
+                    );
                 }
+
+                let init_gain_pop = pipe.pop();
+
+                if period < CONT_TEST_DIST_LENGTH {
+                    // Both gain and loss
+                    for i in 0..(CONT_TEST_DIST_LENGTH - period) {
+                        assert!(
+                            pipe.loss() == pop_size,
+                            "{} didn't lose correct population on gain+loss on step {}!",
+                            pipe_name,
+                            i
+                        );
+
+                        pipe.step(pop_size);
+
+                        assert!(
+                            pipe.pop() == init_gain_pop,
+                            "{} population didn't remain constant during gain+loss!",
+                            pipe_name
+                        );
+                    }
+                } else {
+                    // Neither gain nor loss
+                    for i in 0..(period - CONT_TEST_DIST_LENGTH) {
+                        assert!(
+                            pipe.loss() == 0,
+                            "{} lost {} population prematurely on hold step {}!",
+                            pipe_name,
+                            pipe.loss(),
+                            i
+                        );
+
+                        pipe.step(0);
+
+                        assert!(
+                            pipe.pop() == init_gain_pop,
+                            "{} population didn't remain constant during hold!",
+                            pipe_name
+                        );
+                    }
+                }
+
+                // Only loss
+                for i in 0..period.min(CONT_TEST_DIST_LENGTH) {
+                    assert!(
+                        pipe.loss() == pop_size,
+                        "{} didn't lose correct population on loss step {}: {}!",
+                        pipe_name,
+                        i,
+                        pipe.loss()
+                    );
+
+                    pipe.step(0);
+
+                    assert!(
+                        pipe.pop() == init_gain_pop - (i + 1) * pop_size,
+                        "{} populate didn't decrease correctly during loss!",
+                        pipe_name
+                    );
+                }
+
+                assert!(
+                    pipe.loss() == 0,
+                    "{} still has loss after it's period: {}!",
+                    pipe_name,
+                    pipe.loss(),
+                );
+
+                assert!(
+                    pipe.pop() == 0,
+                    "{} still has population after it's period: {}!",
+                    pipe_name,
+                    pipe.pop()
+                );
             }
         }
     }
@@ -367,5 +456,13 @@ pub mod tests {
     }
 
     #[test]
-    fn test_gound_truth_pipe_normal() {}
+    fn test_ground_truth_pipe_cont() {
+        do_cont_state_pipe_test("GroundTruthStatePipe", GroundTruthStatePipe::default())
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_gaussian_pipe_cont() {
+        do_cont_state_pipe_test("GaussianStatePipe", GaussianStatePipe::default())
+    }
 }

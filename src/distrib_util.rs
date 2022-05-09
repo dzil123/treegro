@@ -1,12 +1,14 @@
 use std::f32::consts::E;
 
+const NORMAL_CDF_APPROX_CONST: f32 = 1.65451;
+
 /**
  * Approximation of normal CDF.
  *
  * -1.65451 is a magic constant that has the lowest deviation from the actual normal CDF.
  */
 fn normal_cdf(mean: f32, std: f32, x: f32) -> f32 {
-    1.0 / (1.0 + E.powf(-1.65451 * std * (x - mean)))
+    1.0 / (1.0 + E.powf((-NORMAL_CDF_APPROX_CONST / std) * (x - mean)))
 }
 
 fn normal_prob(mean: f32, std: f32, min: f32, max: f32) -> f32 {
@@ -52,16 +54,23 @@ fn get_pop_normal_distrib(pop_size: u32, age_std: f32) -> Vec<u32> {
 pub mod tests {
     use crate::distrib_util::*;
 
-    const STD_TOO_BIG_RATIO: f32 = 5.0 / 6.0;
-    const STD_TOO_BIG_POP_INCR: u32 = 50;
+    fn calc_distrib_pop_minimum(std: f32) -> u32 {
+        let r = NORMAL_CDF_APPROX_CONST / (std * 2.0);
+        let min_pop = 0.5 * (E.powf(r) + 1.0) / (E.powf(r) - 1.0);
+        min_pop.ceil() as u32
+    }
+
+    const STD_TOO_BIG_STD_INCR: f32 = 2.0;
     const STD_TOO_BIG_ITER: u32 = 20;
 
     #[test]
-    fn test_distrib_gen_std_too_big() {
-        let mut pop_size: u32 = 0;
+    fn test_distrib_gen_std_way_too_big() {
+        let mut std: f32 = 0.0;
         for _ in 0..STD_TOO_BIG_ITER {
-            pop_size += STD_TOO_BIG_POP_INCR;
-            let distrib = get_pop_normal_distrib(pop_size, pop_size as f32 * STD_TOO_BIG_RATIO);
+            std += STD_TOO_BIG_STD_INCR;
+            let pop_size = calc_distrib_pop_minimum(std);
+            println!("min pop size is {} for std {}", pop_size, std);
+            let distrib = get_pop_normal_distrib(pop_size, std);
             assert!(
                 distrib.iter().all(|pop| *pop == 1),
                 "Failed to generate flat distribution with population size: {}!",
@@ -79,7 +88,7 @@ pub mod tests {
         let mut pop_size: u32 = 0;
         for _ in 0..STD_TOO_SMALL_ITER {
             pop_size += STD_TOO_SMALL_POP_INCR;
-            let distrib = get_pop_normal_distrib(pop_size, pop_size as v32)
+            let distrib = get_pop_normal_distrib(pop_size, pop_size as f32);
             // TODO
         }
     }
