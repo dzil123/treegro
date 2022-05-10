@@ -2,38 +2,46 @@ use std::ops::Mul;
 
 use crate::NUM_RESOURCES;
 
+pub type ParamType = f32;
+pub type ParamRowVector = [ParamType; NUM_RESOURCES + 1];
+pub type ParamColumnVector = [ParamType; PlantFsmParams::TotalParams as usize];
+
 pub struct ParameterMatrix {
-    rows: Vec<[f32; NUM_RESOURCES + 1]>,
+    rows: [ParamRowVector; PlantFsmParams::TotalParams as usize],
+}
+
+impl Default for ParameterMatrix {
+    fn default() -> Self {
+        let mut row = [0.0_f32; NUM_RESOURCES + 1];
+        row[NUM_RESOURCES] = 1.0;
+        ParameterMatrix {
+            rows: [row; PlantFsmParams::TotalParams as usize],
+        }
+    }
 }
 
 impl ParameterMatrix {
-    pub fn new(num_rows: usize) -> Self {
-        ParameterMatrix {
-            rows: (0..num_rows).map(|_| [0.0; 5]).collect(),
-        }
+    pub fn set_offset(&mut self, param: PlantFsmParams, value: f32) {
+        self.rows[param as usize][NUM_RESOURCES] = value;
     }
 
-    pub fn result_len(&self) -> usize {
-        self.rows.len()
-    }
+    pub fn map_offsets(&mut self, values: ParamColumnVector) {}
 }
 
 impl Mul<&ResourceVector> for &ParameterMatrix {
     type Output = SpecificParameterVector;
 
     fn mul(self, rhs: &ResourceVector) -> SpecificParameterVector {
-        let result_vec = self
-            .rows
-            .iter()
-            .map(|row| {
-                (0..(NUM_RESOURCES + 1))
-                    .map(|i| row[i] * rhs.columns[i])
-                    .sum()
-            })
-            .collect::<Vec<f32>>();
-        SpecificParameterVector {
-            columns: result_vec,
+        let result_iter = self.rows.iter().map(|row| {
+            (0..(NUM_RESOURCES + 1))
+                .map(|i| row[i] * rhs.columns[i])
+                .sum()
+        });
+        let mut result_spec = SpecificParameterVector::default();
+        for (i, val) in result_iter.enumerate() {
+            result_spec.columns[i] = val;
         }
+        result_spec
     }
 }
 
@@ -49,11 +57,16 @@ impl Default for ResourceVector {
     }
 }
 
+#[derive(Default, Clone, Copy)]
 pub struct SpecificParameterVector {
-    columns: Vec<f32>,
+    columns: ParamColumnVector,
 }
 
 impl SpecificParameterVector {
+    pub fn from_raw(columns: ParamColumnVector) -> Self {
+        SpecificParameterVector { columns }
+    }
+
     pub fn float_param(&self, param_type: PlantFsmParams) -> f32 {
         assert!((param_type as usize) < self.columns.len());
         self.columns[param_type as usize]
@@ -64,6 +77,13 @@ impl SpecificParameterVector {
         assert!(self.columns[param_type as usize] >= 0.0);
         self.columns[param_type as usize].trunc() as u32
     }
+
+    pub fn total_maturation_period(&self) -> u32 {
+        self.uint_param(PlantFsmParams::SeedMaturationPeriod)
+            + self.uint_param(PlantFsmParams::SeedGerminationPeriod)
+            + self.uint_param(PlantFsmParams::PlantMaturationPeriod)
+    }
+    
 }
 
 #[derive(Clone, Copy)]
@@ -83,5 +103,9 @@ pub enum PlantFsmParams {
     MinimumSurvivalConditions,
     SnagDecompositionPeriod,
     // Total non-trivial states: 9
+
+    /*
+     * WARNING!!!! DON"T PUT ANY VARIANTS AFTER THIS!!!!!!!
+     */
     TotalParams,
 }

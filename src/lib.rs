@@ -10,6 +10,7 @@ mod fsm;
 mod gui;
 mod mainloop;
 pub mod param;
+mod state_pipe;
 mod world;
 
 pub use mainloop::{mainloop, App, HEIGHT, WIDTH};
