@@ -27,7 +27,7 @@ pub struct World {
 }
 
 impl World {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let mut this = Self {
             pixels_size: (WIDTH, HEIGHT),
             ticks_per_frame: 1,
